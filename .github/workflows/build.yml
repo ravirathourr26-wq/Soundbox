@@ -2,6 +2,8 @@ name: Build APK
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,7 +19,11 @@ jobs:
           gradle-version: 8.7
       - run: gradle assembleDebug --no-daemon
         working-directory: Soundbox
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Soundbox-APK
-          path: Soundbox/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Soundbox" --notes "Latest APK"
+          cp Soundbox/app/build/outputs/apk/debug/app-debug.apk Soundbox.apk
+          gh release upload latest Soundbox.apk --clobber
