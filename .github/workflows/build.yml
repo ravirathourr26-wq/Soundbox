@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -q Payment speaker.zip
+      - run: unzip -q Soundbox.zip
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -18,12 +18,12 @@ jobs:
         with:
           gradle-version: 8.7
       - run: gradle assembleDebug --no-daemon
-        working-directory: Payment speaker 
+        working-directory: Soundbox
       - name: Publish APK
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Payment speaker" --notes "Latest APK"
-          cp Payment speaker/app/build/outputs/apk/debug/app-debug.apk Payment speaker.apk
-          gh release upload latest Payment speaker.apk --clobber
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Payment Speaker" --notes "Latest APK"
+          cp Soundbox/app/build/outputs/apk/debug/app-debug.apk Soundbox.apk
+          gh release upload latest Soundbox.apk --clobber
