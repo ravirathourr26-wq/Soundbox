@@ -4,12 +4,26 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: build
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -q Soundbox.zip
+        with:
+          fetch-depth: 0
+      - name: Unpack the newest project zip
+        run: |
+          ZIP="$(git log --name-only --diff-filter=AM --pretty=format: -- '*.zip' | sed '/^$/d' | head -n 1)"
+          echo "Using zip: $ZIP"
+          test -n "$ZIP"
+          mkdir -p project
+          unzip -q "$ZIP" -d project
+          ROOT="$(dirname "$(find project -name settings.gradle.kts | head -n 1)")"
+          echo "Project folder: $ROOT"
+          echo "ROOT=$GITHUB_WORKSPACE/$ROOT" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -17,13 +31,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.7
-      - run: gradle assembleDebug --no-daemon
-        working-directory: Soundbox
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+        working-directory: ${{ env.ROOT }}
       - name: Publish APK
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          VER="$(grep -m1 versionName "$ROOT/app/build.gradle.kts" | sed 's/[^0-9.]//g')"
           gh release view latest >/dev/null 2>&1 || gh release create latest --title "Payment Speaker" --notes "Latest APK"
-          cp Soundbox/app/build/outputs/apk/debug/app-debug.apk Soundbox.apk
+          gh release edit latest --notes "Version $VER"
+          cp "$ROOT/app/build/outputs/apk/debug/app-debug.apk" Soundbox.apk
           gh release upload latest Soundbox.apk --clobber
